@@ -12,7 +12,7 @@ Trtyolosort::Trtyolosort(char *yolo_engine_path,char *sort_engine_path){
 	DS = new DeepSort(sort_engine_path_, 128, 256, 0, &gLogger);
 
 }
-void Trtyolosort::showDetection(cv::Mat& img, std::vector<DetectBox>& boxes) {
+void Trtyolosort::showDetection(cv::Mat& img, std::vector<DetectBox>& boxes,int delay_infer) {
     cv::Mat temp = img.clone();
     for (auto box : boxes) {
         cv::Point lt(box.x1, box.y1);
@@ -47,15 +47,26 @@ void Trtyolosort::showDetection(cv::Mat& img, std::vector<DetectBox>& boxes) {
     cv::putText(temp, lbl, lt, cv::FONT_HERSHEY_COMPLEX, 0.7, color,2);
     cv::Point lt2(1024-500,576-30);
     cv::putText(temp, lb2, lt2, cv::FONT_HERSHEY_COMPLEX, 1, color,2);
+	// process fps
+	float fps = 1000.0 / float(delay_infer);
+	// add fps
+	std::string fps_content = cv::format("fps:%f",fps);
+	cv::Point lt3(20,30);
+    cv::putText(temp, fps_content, lt3, cv::FONT_HERSHEY_COMPLEX, 1, cv::Scalar(0, 255, 0),2);
     cv::imwrite("./realtime.jpeg",temp);
     cv::imshow("img", temp);
     cv::waitKey(1);
 }
 int Trtyolosort::TrtDetect(cv::Mat &frame,float &conf_thresh,std::vector<DetectBox> &det){
 	// yolo detect
+	clock_t start_draw,end_draw;
+	start_draw = clock();
+	auto start = std::chrono::system_clock::now();
 	auto ret = yolov5_trt_detect(trt_engine, frame, conf_thresh,det);
+	auto end = std::chrono::system_clock::now();
+	int delay_infer = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 	// DS->sort(frame,det);
-	showDetection(frame,det);
+	showDetection(frame,det,delay_infer);
 	return 1 ;
 	
 }
